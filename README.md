@@ -113,7 +113,7 @@ On Windows, you can use Git Bash (comes with Git for Windows):
 ### Pages of Sets Feature
 The installer will ask if you want to install "Pages of Sets" - an optional feature that gives you unlimited pages of sets on the Move by holding Shift + Left/Right arrows. 
 
-⚠️ **Warning**: This feature rearranges your sets and changes their colors. You can install it later by running the installer again.
+⚠️ **Warning**: This feature rearranges your sets and changes their colors. You *can* install it later by running the installer again.
 
 ## Usage of the M8 Launchpad Pro emulation
 <img width="5664" height="2788" alt="move_LPP_instructions_v2" src="https://github.com/user-attachments/assets/27d0cf29-35be-4c64-9fc2-52d3f33686dd" />
