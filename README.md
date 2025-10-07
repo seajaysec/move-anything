@@ -36,6 +36,9 @@ Join us on Discord: https://discord.gg/Zn33eRvTyK
 ## How do I actually create a script?
 * Scripts are writting in modern Javascript (es2023). This makes it super fast and safe to try out new ideas and get things working quickly!
 * The underlying core is written in C and can be reused for your own projects.
+* Here's the default script: https://github.com/bobbydigitales/move-anything/blob/main/src/move_default.js
+* Run with `./control_surface_move move_default.js`
+
 * TODO: Example Hello World script showing how to use all the features.
 
 <br>
@@ -110,7 +113,7 @@ On Windows, you can use Git Bash (comes with Git for Windows):
 ### Pages of Sets Feature
 The installer will ask if you want to install "Pages of Sets" - an optional feature that gives you unlimited pages of sets on the Move by holding Shift + Left/Right arrows. 
 
-⚠️ **Warning**: This feature rearranges your sets and changes their colors. You can install it later by running the installer again.
+⚠️ **Warning**: This feature rearranges your sets and changes their colors. You *can* install it later by running the installer again.
 
 ## Usage of the M8 Launchpad Pro emulation
 <img width="5664" height="2788" alt="move_LPP_instructions_v2" src="https://github.com/user-attachments/assets/27d0cf29-35be-4c64-9fc2-52d3f33686dd" />
