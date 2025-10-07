@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Move Anything Installer
+# A comprehensive installer with better UX and error handling
 
 set -euo pipefail
 
@@ -24,7 +25,8 @@ FILENAME="control_surface_move.tar.gz"
 VERSION_FILE="VERSION"
 
 # SSH commands
-SSH_ABLETON="ssh -o LogLevel=QUIET -o ConnectTimeout=10 -o StrictHostKeyChecking=no"
+SSH_ABLETON="ssh -o LogLevel=QUIET -o ConnectTimeout=10"
+SSH_ABLETON_NO_CHECK="ssh -o LogLevel=QUIET -o ConnectTimeout=10 -o StrictHostKeyChecking=no"
 SSH_ROOT="ssh -o LogLevel=QUIET -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@$HOSTNAME"
 
 # Global variables
@@ -188,7 +190,8 @@ check_network() {
 check_ssh_access() {
     print_status "Checking SSH access..."
     
-    if $SSH_ABLETON "$USERNAME@$HOSTNAME" "echo 'SSH test successful'" &> /dev/null; then
+    # Use the same SSH options that will be used for actual operations
+    if $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "echo 'SSH test successful'" &> /dev/null; then
         print_success "SSH access confirmed"
         return 0
     else
@@ -291,15 +294,32 @@ setup_ssh() {
     echo ""
     read -p "Press Enter when you've added your SSH key, or Ctrl+C to exit..."
     
-    if check_ssh_access; then
+    # Check SSH access with the same settings that will be used for actual operations
+    if $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "echo 'SSH test successful'" &> /dev/null; then
         print_success "SSH setup completed successfully!"
     else
         print_error "SSH setup failed. Please check your configuration."
         echo ""
-        print_warning "Common issues:"
-        echo "- Make sure you copied the entire public key"
-        echo "- Check that the key doesn't have extra spaces or newlines"
-        echo "- Try regenerating the key if needed"
+        print_warning "Common SSH issues and solutions:"
+        echo ""
+        print_status "1. Host key verification failed:"
+        echo "   - Run: ssh-keygen -R $HOSTNAME"
+        echo "   - Or edit ~/.ssh/known_hosts and remove the line for $HOSTNAME"
+        echo ""
+        print_status "2. Permission denied (publickey):"
+        echo "   - Make sure you copied the entire public key"
+        echo "   - Check that the key doesn't have extra spaces or newlines"
+        echo "   - Verify the key was added correctly at http://$HOSTNAME/development/ssh"
+        echo ""
+        print_status "3. Connection refused:"
+        echo "   - Make sure SSH is enabled on your Move"
+        echo "   - Check that your Move and computer are on the same network"
+        echo "   - Try accessing http://$HOSTNAME in your browser"
+        echo ""
+        print_status "4. Other issues:"
+        echo "   - Try running: ssh $USERNAME@$HOSTNAME"
+        echo "   - Check Move's network settings"
+        echo "   - Restart your Move if needed"
         echo ""
         exit 1
     fi
@@ -309,7 +329,7 @@ setup_ssh() {
 check_existing_installation() {
     print_status "Checking for existing installation..."
     
-    if $SSH_ABLETON "$USERNAME@$HOSTNAME" "test -f $SHIM_PATH" &> /dev/null; then
+    if $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "test -f $SHIM_PATH" &> /dev/null; then
         print_warning "Move Anything appears to be already installed"
         
         if [ "$FORCE_OVERWRITE" = true ]; then
@@ -416,8 +436,21 @@ download_package() {
 install_package() {
     print_status "Uploading package to Move..."
     
-    if ! scp -o ConnectTimeout=10 "$FILENAME" "$USERNAME@$HOSTNAME:."; then
+    if ! scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$FILENAME" "$USERNAME@$HOSTNAME:."; then
         print_error "Failed to upload package"
+        print_warning "This might be due to SSH host key verification issues."
+        echo ""
+        print_status "If you see a 'REMOTE HOST IDENTIFICATION HAS CHANGED' error:"
+        echo "1. The Move's SSH host key has changed (common after firmware updates)"
+        echo "2. Remove the old host key: ssh-keygen -R $HOSTNAME"
+        echo "3. Or remove the specific line from ~/.ssh/known_hosts"
+        echo "4. Then run this installer again"
+        echo ""
+        print_status "If you see other SSH errors:"
+        echo "1. Make sure SSH is enabled on your Move"
+        echo "2. Check that your SSH key is properly configured"
+        echo "3. Try running: ssh $USERNAME@$HOSTNAME"
+        echo ""
         exit 1
     fi
     
@@ -425,7 +458,7 @@ install_package() {
     
     print_status "Extracting package..."
     # Use the same method as the original installer
-    if ! $SSH_ABLETON "$USERNAME@$HOSTNAME" "tar -xvf ./$FILENAME"; then
+    if ! $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "tar -xvf ./$FILENAME"; then
         print_error "Failed to extract package"
         exit 1
     fi
@@ -439,7 +472,7 @@ install_binaries() {
     
     # Stop existing Move processes
     print_status "Stopping existing Move processes..."
-    $SSH_ABLETON "$USERNAME@$HOSTNAME" "killall MoveLauncher Move MoveOriginal 2>/dev/null || true"
+    $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "killall MoveLauncher Move MoveOriginal 2>/dev/null || true"
     
     # Install shim
     print_status "Installing control surface shim..."
@@ -450,7 +483,7 @@ install_binaries() {
     print_status "Backing up original Move binary..."
     if ! $SSH_ROOT "test -f $BINARY_DIR/MoveOriginal"; then
         $SSH_ROOT "mv $BINARY_DIR/Move $BINARY_DIR/MoveOriginal"
-        $SSH_ABLETON "$USERNAME@$HOSTNAME" "cp $BINARY_DIR/MoveOriginal ~/"
+        $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "cp $BINARY_DIR/MoveOriginal ~/"
         print_success "Original Move binary backed up"
     else
         print_status "Original Move binary already backed up"
@@ -468,7 +501,7 @@ install_binaries() {
 install_pages_of_sets() {
     print_status "Checking Pages of Sets installation..."
     
-    if $SSH_ABLETON "$USERNAME@$HOSTNAME" "test -L ~/UserLibrary"; then
+    if $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "test -L ~/UserLibrary"; then
         print_status "Pages of Sets already installed"
         return 0
     fi
@@ -506,9 +539,9 @@ install_pages_of_sets() {
     if [ "$INSTALL_PAGES" = true ]; then
         print_status "Installing Pages of Sets..."
         
-        $SSH_ABLETON "$USERNAME@$HOSTNAME" "mv ~/UserLibrary ~/UserLibrary_base"
-        $SSH_ABLETON "$USERNAME@$HOSTNAME" "$INSTALL_DIR/changePage.sh 0 skipLaunch"
-        $SSH_ABLETON "$USERNAME@$HOSTNAME" "cp -a ~/UserLibrary_base/Sets/* ~/UserLibrary_0/Sets/"
+        $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "mv ~/UserLibrary ~/UserLibrary_base"
+        $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "$INSTALL_DIR/changePage.sh 0 skipLaunch"
+        $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "cp -a ~/UserLibrary_base/Sets/* ~/UserLibrary_0/Sets/"
         
         print_success "Pages of Sets installed successfully"
     else
@@ -550,7 +583,7 @@ verify_installation() {
 start_move() {
     print_status "Starting Move with Move Anything..."
     
-    $SSH_ABLETON "$USERNAME@$HOSTNAME" "nohup $BINARY_DIR/MoveLauncher 2>/dev/null 1>/dev/null &" &
+    $SSH_ABLETON_NO_CHECK "$USERNAME@$HOSTNAME" "nohup $BINARY_DIR/MoveLauncher 2>/dev/null 1>/dev/null &" &
     
     print_success "Move started successfully"
 }
